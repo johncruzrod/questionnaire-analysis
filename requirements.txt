@@ -1,2 +1,2 @@
 openai
-pdf2image
+PyMuPDF
