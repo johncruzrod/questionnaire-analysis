@@ -1,2 +1,5 @@
 openai
-PyMuPDF
+streamlit
+pdf2image
+Pillow
+requests
