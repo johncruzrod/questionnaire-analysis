@@ -99,7 +99,7 @@ with main_column:
             - Trigger for anything over UIAA IV+, British Technical grade greater than 4a, and Yosemite decimal system YDS over 5.5.
             - Any other entry should be referred.
             
-            Please provide a detailed analysis of the form, identifying any additional risks or issues that need further review based on the provided criteria.
+            Do not provide an in depth analysis of the form! Only reply with information related to the criteria above, and what information is relevant.
             """
             
             payload = {
