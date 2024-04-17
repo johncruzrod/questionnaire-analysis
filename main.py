@@ -32,7 +32,7 @@ def encode_image(image):
 st.header('Upload a PDF below, and ask ChatGPT a question about it:')
 
 uploaded_file = st.file_uploader("Choose a PDF file", type=["pdf"])
-
+images = []
 if uploaded_file is not None:
     images = convert_pdf_to_images(uploaded_file)
     for image in images:
@@ -41,7 +41,8 @@ if uploaded_file is not None:
 request = st.text_input("Type your question here:")
 
 if st.button("Submit"):
-    if uploaded_file is not None:
+    if uploaded_file is not None and images:
+        responses = []
         for image in images:
             base64_image = encode_image(image)
             headers = {
@@ -60,29 +61,22 @@ if st.button("Submit"):
                             },
                             {
                                 "type": "image_url",
-                                "image_url": {
-                                    "url": f"data:image/jpeg;base64,{base64_image}",
-                                    "detail": "high"
-                                }
+                                "image_url": f"data:image/jpeg;base64,{base64_image}"
                             }
                         ]
                     }
                 ],
                 "max_tokens": 4000
             }
-            with st.spinner("Processing your request..."):
-                try:
-                    response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload)
-                    if response.status_code == 200:
-                        response_json = response.json()
-                        output = response_json["choices"][0]["message"]["content"]
-                        st.markdown(output, unsafe_allow_html=True)
-                    else:
-                        error_message = f"An error occurred while processing the request. Status code: {response.status_code}"
-                        error_details = response.text
-                        st.error(error_message)
-                        st.error(f"Error details: {error_details}")
-                except requests.exceptions.RequestException as e:
-                    st.error(f"An error occurred while making the request: {str(e)}")
+            response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload)
+            if response.status_code == 200:
+                response_json = response.json()
+                responses.append(response_json["choices"][0]["message"]["content"])
+            else:
+                st.error(f"Failed to process image. Status code: {response.status_code}")
+                responses.append(f"Error: {response.text}")
+
+        for resp in responses:
+            st.markdown(resp, unsafe_allow_html=True)
     else:
-        st.warning("Please upload a PDF file.")
+        st.warning("Please upload a PDF file and ensure it has images.")
