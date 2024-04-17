@@ -32,51 +32,60 @@ def encode_image(image):
 st.header('Upload a PDF below, and ask ChatGPT a question about it:')
 
 uploaded_file = st.file_uploader("Choose a PDF file", type=["pdf"])
-images = []
+
 if uploaded_file is not None:
     images = convert_pdf_to_images(uploaded_file)
-    for image in images:
-        st.image(image, use_column_width=True)
-
-request = st.text_input("Type your question here:")
-
-if st.button("Submit"):
-    if uploaded_file is not None and images:
-        responses = []
+    
+    for i, image in enumerate(images, start=1):
+        st.image(image, use_column_width=True, caption=f"Page {i}")
+    
+    request = st.text_input("Type your question here:")
+    
+    if st.button("Submit"):
+        image_urls = []
         for image in images:
             base64_image = encode_image(image)
-            headers = {
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {api_key}"
-            }
-            payload = {
-                "model": "gpt-4-turbo",
-                "messages": [
-                    {
-                        "role": "user",
-                        "content": [
-                            {
-                                "type": "text",
-                                "text": request
-                            },
-                            {
-                                "type": "image_url",
-                                "image_url": f"data:image/jpeg;base64,{base64_image}"
-                            }
-                        ]
-                    }
-                ],
-                "max_tokens": 4000
-            }
-            response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload)
-            if response.status_code == 200:
-                response_json = response.json()
-                responses.append(response_json["choices"][0]["message"]["content"])
-            else:
-                st.error(f"Failed to process image. Status code: {response.status_code}")
-                responses.append(f"Error: {response.text}")
-
-        for resp in responses:
-            st.markdown(resp, unsafe_allow_html=True)
-    else:
-        st.warning("Please upload a PDF file and ensure it has images.")
+            image_urls.append({
+                "type": "image_url",
+                "image_url": {
+                    "url": f"data:image/jpeg;base64,{base64_image}",
+                    "detail": "high"
+                }
+            })
+        
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {api_key}"
+        }
+        
+        payload = {
+            "model": "gpt-4-turbo",
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": request
+                        }
+                    ] + image_urls
+                }
+            ],
+            "max_tokens": 4000
+        }
+        
+        with st.spinner("Processing your request..."):
+            try:
+                response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload)
+                
+                if response.status_code == 200:
+                    response_json = response.json()
+                    output = response_json["choices"][0]["message"]["content"]
+                    st.markdown(output, unsafe_allow_html=True)
+                else:
+                    error_message = f"An error occurred while processing the request. Status code: {response.status_code}"
+                    error_details = response.text
+                    st.error(error_message)
+                    st.error(f"Error details: {error_details}")
+            except requests.exceptions.RequestException as e:
+                st.error(f"An error occurred while making the request: {str(e)}")
