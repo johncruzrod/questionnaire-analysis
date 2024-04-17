@@ -1,3 +1,2 @@
 openai
 pdf2image
-Poppler
