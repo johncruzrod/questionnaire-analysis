@@ -1,5 +1,2 @@
 openai
-streamlit
-pdf2image
-Pillow
-requests
+pymupdf
