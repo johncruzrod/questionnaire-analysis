@@ -55,7 +55,52 @@ with main_column:
                 "Authorization": f"Bearer {api_key}"
             }
             
-            prompt = "YOUR_PROMPT_HERE"  # Replace with your desired prompt
+            prompt = """
+            Please analyze the attached form image based on the following criteria:
+            
+            1. Identify the type of form being sent (e.g., Travel Questionnaire, Diving, Aviation, Sailing, Motorsport, or Mountaineering).
+            
+            2. Apply the appropriate criteria for the identified form type:
+            
+            Travel Questionnaire:
+            - Check for medical requirements, especially for foreign residence. Note to check with insurers for any overseas residence.
+            - Europe and Russia: Typically no issues medically in western parts, but eastern Europe may require HIV and/or Hep screening. Travel is normally fine for western Europe, but eastern areas require some diligence.
+            - North America: Typically no issues medically or travel-related.
+            - Middle East: Countries require individual consideration both medically and travel risk.
+            - Central America: Typically no extra meds other than Belize and Panama, which need HIV and Hep screening. Travel needs to be considered due to risk.
+            - South America: More developed countries usually okay for meds, but poorer countries will need HIV/Hep screening. Some countries will need review on travel due to risks.
+            - Asia: High chance of HIV requirement, and some countries also need Hep B. Travel will need to be assessed as well.
+            - Australasia: Largely fine for HIV and Hep, but Papua New Guinea needs both testing. Travel usually fine but will need reviewing for Papua New Guinea.
+            - Antarctica: Medically fine, but travel needs to be reviewed.
+            - Caribbean: Review meds, as HIV and Hep are likely. Travel to be considered in some areas.
+            - Africa: Review meds, as HIV and Hep are likely. Travel to be considered in most areas.
+            
+            Diving:
+            - Leisure diving up to 30ms is typically fine when the individual is qualified. Anything above that could become ratable.
+            - If the number of dives is above 9, provide a trigger to review.
+            - If any of the tick boxes in diving activities are positively answered, generate a trigger to review.
+            - The same applies to free diving.
+            
+            Aviation:
+            - Trigger a check on all cases, as most are likely to be ratable.
+            
+            Sailing:
+            - Trigger if sailing over 15 days.
+            - Trigger if racing is ticked.
+            - Trigger if anything above inland and enclosed tidal waters is ticked, as it starts to run the risk of ratings.
+            
+            Motorsport:
+            - Trigger all cases, as they are likely to be very complex due to the vast amount of variation.
+            
+            Mountaineering:
+            - Trigger for anything above amateur level.
+            - Trigger for anything other than Indoor, Climbing park, Hiking, or Trekking (unless over 3000ms).
+            - Trigger for anything over 3000ms, solo, or Frequency over 1.
+            - Trigger for anything over UIAA IV+, British Technical grade greater than 4a, and Yosemite decimal system YDS over 5.5.
+            - Any other entry should be referred.
+            
+            Please provide a detailed analysis of the form, identifying any additional risks or issues that need further review based on the provided criteria.
+            """
             
             payload = {
                 "model": "gpt-4-turbo",
