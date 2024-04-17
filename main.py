@@ -32,7 +32,7 @@ main_column, right_column = st.columns([2, 1])
 
 # Add your main component to the middle column
 with main_column:
-    st.title('Upload PDF')
+    st.title('Upload Questionnaire Below & Click Submit')
     uploaded_file = st.file_uploader("Choose a PDF file", type=["pdf"])
     
     if uploaded_file is not None:
