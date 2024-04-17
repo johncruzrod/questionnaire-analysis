@@ -1,97 +1,88 @@
 import streamlit as st
 import base64
-import openai
 import requests
-import fitz
-from io import BytesIO
+import fitz  # PyMuPDF
+from PIL import Image
+import io
 
 st.set_page_config(layout="wide")
 
-# Use Streamlit's secret management to safely store and access your API key
 api_key = st.secrets["OPENAI_API_KEY"]
+
+# Function to convert PDF file to images
+def convert_pdf_to_images(pdf_file):
+    doc = fitz.open(stream=pdf_file.read(), filetype="pdf")
+    images = []
+    for page in doc:
+        for img_index, img in enumerate(page.get_images(full=True)):
+            xref = img[0]
+            base_image = doc.extract_image(xref)
+            image_bytes = base_image["image"]
+            image = Image.open(io.BytesIO(image_bytes))
+            images.append(image)
+    return images
 
 # Function to encode the image
 def encode_image(image):
-   buffered = BytesIO()
-   image.save(buffered, format="PNG")
-   base64_image = base64.b64encode(buffered.getvalue()).decode('utf-8')
-   return base64_image
+    img_byte_arr = io.BytesIO()
+    image.save(img_byte_arr, format='JPEG')
+    base64_image = base64.b64encode(img_byte_arr.getvalue()).decode('utf-8')
+    return base64_image
 
-# Add your main component
 st.header('Upload a PDF below, and ask ChatGPT a question about it:')
-# File uploader
-uploaded_file = st.file_uploader("Choose a PDF", type=["pdf"])
 
-# Check if a file was uploaded
+uploaded_file = st.file_uploader("Choose a PDF file", type=["pdf"])
+
 if uploaded_file is not None:
-   # Open the PDF file using PyMuPDF
-   pdf_doc = fitz.open(stream=uploaded_file.read(), filetype="pdf")
-   
-   # Iterate through each page of the PDF
-   for page_num, page in enumerate(pdf_doc, start=1):
-       # Render the page as an image
-       pdf_image = page.get_pixmap(matrix=fitz.Matrix(2, 2), alpha=False)
-       
-       # Convert the pixmap to a PNG image
-       pdf_bytes = pdf_image.tobytes("png")
-       pdf_image = BytesIO(pdf_bytes)
-       
-       # Display the page image
-       st.image(pdf_image, use_column_width=True, caption=f"Page {page_num}")
-       
-       # Request input
-       request = st.text_input(f"Type your question for page {page_num} here:")
-       
-       # Submit button
-       if st.button(f"Submit for page {page_num}"):
-           # Encode the PDF image
-           base64_image = encode_image(pdf_image)
-           
-           # Prepare the headers for the HTTP request to OpenAI API
-           headers = {
-               "Content-Type": "application/json",
-               "Authorization": f"Bearer {api_key}"
-           }
-           
-           # Prepare the payload with the encoded image and the user's request
-           payload = {
-               "model": "gpt-4-turbo",
-               "messages": [
-                   {
-                       "role": "user",
-                       "content": [
-                           {
-                               "type": "text",
-                               "text": request
-                           },
-                           {
-                               "type": "image_url",
-                               "image_url": {
-                                   "url": f"data:image/jpeg;base64,{base64_image}",
-                                   "detail": "high"
-                               }
-                           }
-                       ]
-                   }
-               ],
-               "max_tokens": 4000
-           }
-           
-           # Show the loading wheel
-           with st.spinner("Processing your request..."):
-               try:
-                   # Make the HTTP request to the OpenAI API
-                   response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload)
-                   
-                   # Check the response status and display the output or an error message
-                   if response.status_code == 200:
-                       response_json = response.json()
-                       output = response_json["choices"][0]["message"]["content"]
-                       st.markdown(output, unsafe_allow_html=True)
-                   else:
-                       error_message = f"An error occurred while processing the request. Status code: {response.status_code}"
-                       error_details = response.text
-                       st.error(error_message)
-                       st.error(f"Error details: {error_details}")
-               except requests.exceptions.RequestException as e:
-                   st.error(f"An error occurred while making the request: {str(e)}")
+    images = convert_pdf_to_images(uploaded_file)
+    for image in images:
+        st.image(image, use_column_width=True)
+
+request = st.text_input("Type your question here:")
+
+if st.button("Submit"):
+    if uploaded_file is not None:
+        for image in images:
+            base64_image = encode_image(image)
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {api_key}"
+            }
+            payload = {
+                "model": "gpt-4-turbo",
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": request
+                            },
+                            {
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": f"data:image/jpeg;base64,{base64_image}",
+                                    "detail": "high"
+                                }
+                            }
+                        ]
+                    }
+                ],
+                "max_tokens": 4000
+            }
+            with st.spinner("Processing your request..."):
+                try:
+                    response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload)
+                    if response.status_code == 200:
+                        response_json = response.json()
+                        output = response_json["choices"][0]["message"]["content"]
+                        st.markdown(output, unsafe_allow_html=True)
+                    else:
+                        error_message = f"An error occurred while processing the request. Status code: {response.status_code}"
+                        error_details = response.text
+                        st.error(error_message)
+                        st.error(f"Error details: {error_details}")
+                except requests.exceptions.RequestException as e:
+                    st.error(f"An error occurred while making the request: {str(e)}")
+    else:
+        st.warning("Please upload a PDF file.")
